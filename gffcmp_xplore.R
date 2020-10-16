@@ -39,3 +39,30 @@ ggplot(tmmap, aes(class_code))+geom_bar()+
 # which is also the same with:
 ggplot(tmmap)+aes(class_code) + geom_bar() + 
   geom_text(aes(label=..count..), vjust=-0.5, stat="count", position="identity")
+## to hide the legend, colorize the bars and increase font:
+ggplot(tmmap)+aes(class_code) + geom_bar(aes(fill=factor(class_code))) + 
+  geom_text(aes(label=..count..), vjust=-0.5, stat="count", position="identity")+
+  theme(text = element_text(size=16), legend.position = "none")
+##
+## Want to discard all class codes with less than 100 entries (u,y,o,i etc.)
+## while also changing the bar chart so the bars are sorted by frequency
+## Note that levels(factor(tmmap$class_code)) has the default order of the bars
+## so we have to change that
+## -- Create a new column with the desired ordering as given by table(tmap$class_code)
+## sort(table(tmmap$class_code), decreasing=TRUE) shows the desired order!
+## take names() of that to get just the list of class_codes in the order we want them, 
+## so the new factor column should be built like this
+tmmap$codeFactor <- factor(tmmap$class_code, 
+                         levels=names(sort(table(tmmap$class_code), decreasing=TRUE)))
+## now the codeFactor column is of type factor, it shows the same class_code 
+## but the factor levels internally are different
+## the following should now show the class codes (codeFactor entries) in the order of 
+## decreasing frequency but also discarded if they are lower than 100
+levels(tmmap$codeFactor)[table(tmmap$codeFactor)>=100]
+## so now we can subset the data frame using this new codeFactor column:
+tmsel <- subset(tmmap, codeFactor %in% levels(tmmap$codeFactor)[table(tmmap$codeFactor)>=100])
+# note the above is the same with this (the codeFactor only matters for sorting!):
+#tmsel <- subset(tmmap, class_code %in% levels(factor(tmmap$class_code))[table(tmmap$class_code)>=100])
+ggplot(tmsel)+aes(codeFactor) + geom_bar(aes(fill=codefactor)) + 
+  geom_text(aes(label=..count..), vjust=-0.5, stat="count", position="identity")+
+  theme(text = element_text(size=16), legend.position = "none")
