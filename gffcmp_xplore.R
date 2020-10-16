@@ -52,17 +52,17 @@ ggplot(tmmap)+aes(class_code) + geom_bar(aes(fill=factor(class_code))) +
 ## sort(table(tmmap$class_code), decreasing=TRUE) shows the desired order!
 ## take names() of that to get just the list of class_codes in the order we want them, 
 ## so the new factor column should be built like this
-tmmap$codeFactor <- factor(tmmap$class_code, 
+tmmap$class <- factor(tmmap$class_code, 
                          levels=names(sort(table(tmmap$class_code), decreasing=TRUE)))
-## now the codeFactor column is of type factor, it shows the same class_code 
+## now the class column is of type factor, it shows the same class_code 
 ## but the factor levels internally are different
-## the following should now show the class codes (codeFactor entries) in the order of 
+## the following should now show the class codes (class entries) in the order of 
 ## decreasing frequency but also discarded if they are lower than 100
-levels(tmmap$codeFactor)[table(tmmap$codeFactor)>=100]
-## so now we can subset the data frame using this new codeFactor column:
-tmsel <- subset(tmmap, codeFactor %in% levels(tmmap$codeFactor)[table(tmmap$codeFactor)>=100])
-# note the above is the same with this (the codeFactor only matters for sorting!):
+levels(tmmap$class)[table(tmmap$class)>=100]
+## so now we can subset the data frame using this new class column:
+tmsel <- subset(tmmap, class %in% levels(tmmap$class)[table(tmmap$class)>=100])
+# note the above is the same with this (the class only matters for sorting!):
 #tmsel <- subset(tmmap, class_code %in% levels(factor(tmmap$class_code))[table(tmmap$class_code)>=100])
-ggplot(tmsel)+aes(codeFactor) + geom_bar(aes(fill=codefactor)) + 
+ggplot(tmsel)+aes(class) + geom_bar(aes(fill=class)) + 
   geom_text(aes(label=..count..), vjust=-0.5, stat="count", position="identity")+
   theme(text = element_text(size=16), legend.position = "none")
