@@ -1,0 +1,109 @@
+---
+title: "Transcriptional noise simulations"
+output: html_notebook
+---
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+
+```{r, fig.width=20,fig.height=11}
+
+library(ggplot2)
+library(plotly)
+library(dplyr)
+library(cowplot)
+
+# load the aligner summary results
+#t <- '2'
+adf<-read.table('txnoise/results.head.tab', 
+                  header=T, sep='\t')
+for (t in 0:2) {
+ for (s in 0:9) {
+   bdf<-read.table(paste0('txnoise/t',toString(t),'_s',toString(s),'/results.tab'), 
+                header=F, sep='\t')
+   bdf$V2 <- sub("^hisat2([a-z]+)", "hisat-\\1", bdf$V2)
+   bdf$V2 <- sub("^hisat2$", "hisat-dta", bdf$V2)
+   colnames(bdf) <- colnames(adf)
+   adf <- rbind(adf, bdf)
+  }
+}
+
+at <- subset(adf, grepl('_s\\d$', adf$sample)) 
+## data with splicing noise added
+ats <- subset(adf, grepl('\\.s$', adf$sample))
+
+```
+
+
+Percent of correct spliced alignments (multi-exon alignments)
+Instead of data=at, we can exclude aligner entries by using:
+ data=subset(at, aligner %in% c('hisat2','star','hisat2nodta','hisat21'))
+ 
+```{r, fig.width=9,fig.height=5}
+ggplot(data=at, aes(x=as.numeric(factor(sample)), y=num_match_spl/num_sim_spl, group=aligner,
+        color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
+        xlab("samples") + ylab(" proportion correctly aligned") + 
+        ggtitle("Proportion of spliced reads correctly aligned") +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5),
+              axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
+              axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
+              ) +
+        scale_shape_manual(values = c(0, 2, 20, 18, 1)) +
+        scale_y_continuous(breaks=seq(0.5, 0.98, 0.02)) +
+        scale_x_continuous(breaks=seq(1, 30, 1))
+
+```
+When splicing noise is added, it looks pretty much the same:
+
+```{r, fig.width=9,fig.height=5}
+ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=num_match_spl/num_sim_spl, group=aligner,
+        color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
+        xlab("samples") + ylab(" proportion correctly aligned") + 
+        ggtitle("Proportion of spliced reads correctly aligned") +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5),
+              axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
+              axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
+              ) +
+        scale_shape_manual(values = c(0, 2, 20, 18, 1)) +
+        scale_y_continuous(breaks=seq(0.5, 0.98, 0.02)) +
+        scale_x_continuous(breaks=seq(1, 30, 1))
+```
+Number of reads incorrectly mapped as spliced, even though they should be a single-exon alignment (false splice alignments)
+
+```{r, fig.width=9,fig.height=5}
+ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=unspl_mapped_spl, group=aligner,
+        color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
+        xlab("samples") + ylab("single-exon reads incorrectly aligned as spliced") + 
+        ggtitle("Single-exon reads incorrectly mapped as spliced") +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5),
+              axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
+              axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
+              ) +
+        scale_shape_manual(values = c(0, 2, 20, 18, 1)) +
+        scale_x_continuous(breaks=seq(1, 30, 1)) +
+        scale_y_continuous(breaks=seq(50000, 900000, 50000))
+
+```
+And similarly, the number of reads that should be aligned spliced but instead they were aligned without introns (missed spliced alignments!):
+
+```{r, fig.width=9,fig.height=5}
+ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=spl_mapped_unspl, group=aligner,
+        color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
+        xlab("samples") + ylab("single-exon reads incorrectly aligned as spliced") + 
+        ggtitle("Single-exon reads incorrectly mapped as spliced") +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5),
+              axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
+              axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
+              ) +
+        scale_shape_manual(values = c(0, 2, 20, 18, 1)) +
+        scale_x_continuous(breaks=seq(1, 30, 1)) +
+        scale_y_continuous(breaks=seq(250000, 6000000, 500000))
+        
+
+```
