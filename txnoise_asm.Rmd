@@ -16,8 +16,8 @@ library(RColorBrewer)
 adf<-read.table('txnoise/t0_s0/real.tinfo.covs.tab', 
                   header=T, sep='\t')
 adf$tid <- paste('t0_s0', adf$tid, sep='.')
-for (t in 0:0) { #use 0:2 to gather all tissues
- for (s in 0:1) { #use 0:9 to gather all samples for this tissue
+for (t in 0:1) { #use 0:2 to gather all tissues
+ for (s in 0:3) { #use 0:9 to gather all samples for this tissue
    if (t!=0 || s!=0) {
       ts=paste0('t',toString(t),'_s',toString(s))
       df<-read.table(paste0('txnoise/',ts,'/real.tinfo.covs.tab'), 
@@ -31,7 +31,7 @@ for (t in 0:0) { #use 0:2 to gather all tissues
 ```
 Subset this dataset to only include the multi-exon transcripts with simulated coverage > 1.0 (reasonable)
 ```{r}
-metdf=subset(adf, num_exons>1 & sim_cov>1.0)
+metdf=subset(adf, num_exons>1 & sim_cov>0.5)
 
 ```
 
@@ -41,8 +41,8 @@ including the assembly of the "simulated" perfect alignments (sim_t_strg)
 
 We can start with the fraction of totally missed assemblies (coverage=0.00) as it decreases with the increase of sim_cov (recovery fractions)
 
-```{r, fig.width=9,fig.height=5}
-brks <- c(0,1.5,2,4,6,8,10,15,20,30,40,50,75,100)
+```{r, fig.width=11,fig.height=6}
+brks <- c(0.5,1.5,2,4,6,8,10,15,20,30,40,50,75,100)
 tdf <- metdf %>% select(sim_cov, sim_t_strg, sim_t_strg1, hisat21_t_strg, hisat2rs_t_strg, 
                         hisat2_t_strg, hisat2nodta_t_strg, star_t_strg) %>% 
   mutate(bin_simcov=cut(metdf$sim_cov, breaks=c(brks, Inf))) %>% group_by(bin_simcov) %>% 
@@ -53,9 +53,6 @@ tdf <- metdf %>% select(sim_cov, sim_t_strg, sim_t_strg1, hisat21_t_strg, hisat2
   pivot_longer(!bin_simcov & !tc, values_to="rf", names_to="method") %>% 
   mutate( method = gsub("_", "-",gsub("^rf_","",method)))
 
-```
-
-```{r, fig.width=9,fig.height=5}
 ggplot(data=tdf, aes(x=bin_simcov, y=rf, group=method,
         color=method)) +  geom_line(size=1) + geom_point(aes(shape=method), size=2.4) + 
         xlab("Coverage bin") + ylab("Transcript recovery rate") + 
@@ -65,16 +62,16 @@ ggplot(data=tdf, aes(x=bin_simcov, y=rf, group=method,
               axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
               axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
               ) +
-        scale_shape_manual(values = c(0, 2, 4, 3, 1,18, 20))+
-        scale_y_continuous(breaks=seq(0.0, 1.0, 0.1))
-        #scale_color_brewer(palette="Set2")
+        scale_shape_manual(values = c(0, 2, 4, 3, 1,9,20))+
+        scale_y_continuous(breaks=seq(0.0, 1.0, 0.1))+
+        scale_color_brewer(palette="Set2")
         #scale_x_continuous(breaks=seq(1, 30, 1))
 
 ```
 
 If we add the splicing noise:
 
-```{r, fig.width=9,fig.height=5}
+```{r, fig.width=11,fig.height=6}
 brks <- c(0,1.5,2,4,6,8,10,15,20,30,40,50,75,100)
 twsdf <- metdf %>% select(sim_cov, sim_tws_strg, sim_tws_strg1, hisat21_tws_strg, hisat2rs_tws_strg, 
                         hisat2_tws_strg, hisat2nodta_tws_strg, star_tws_strg) %>% 
@@ -96,9 +93,71 @@ ggplot(data=twsdf, aes(x=bin_simcov, y=rf, group=method,
               axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
               axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
               ) +
-        scale_shape_manual(values = c(0, 2, 4, 3, 1,18, 20))+
-        scale_y_continuous(breaks=seq(0.0, 1.0, 0.1))
+        scale_shape_manual(values = c(0, 2, 4, 3, 1,9,20))+
+        scale_y_continuous(breaks=seq(0.0, 1.0, 0.1))+
+        scale_color_brewer(palette="Set2")
 
 ```
-It's clear that Stringtie1 is always worse than Stringtie2, so we'll drop it from now on from our comparisons.
+It's clear that Stringtie1 is always worse than Stringtie2, so we'll drop it from now on from our comparisons:
 
+```{r, fig.width=11,fig.height=6}
+brks <- c(0,1.5,2,4,6,8,10,15,20,30,40,50,75,100)
+tdf <- metdf %>% select(sim_cov, sim_t_strg, hisat21_t_strg, hisat2rs_t_strg, 
+                        hisat2_t_strg, hisat2nodta_t_strg, star_t_strg) %>% 
+  mutate(bin_simcov=cut(metdf$sim_cov, breaks=c(brks, Inf))) %>% group_by(bin_simcov) %>% 
+  summarize(tc=n(), rf_T_strg = sum(sim_t_strg>0)/tc, 
+            rf_hisat21=sum(hisat21_t_strg>0)/tc, rf_hisat_rs=sum(hisat2rs_t_strg>0)/tc, 
+            rf_hisat_dta=sum(hisat2_t_strg>0)/tc, rf_hisat_nodta=sum(hisat2nodta_t_strg>0)/tc, 
+            rf_star=sum(star_t_strg>0)/tc, .groups = 'drop') %>% 
+  pivot_longer(!bin_simcov & !tc, values_to="rf", names_to="method") %>% 
+  mutate( method = gsub("_", "-",gsub("^rf_","",method)))
+
+
+ggplot(data=tdf, aes(x=bin_simcov, y=rf, group=method,
+        color=method)) +  geom_line(size=1) + geom_point(aes(shape=method), size=2.4) + 
+        xlab("Coverage bin") + ylab("Transcript recovery rate") + 
+        ggtitle("Transcript recovery rate by coverage") +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5),
+              axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
+              axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
+              ) +
+        scale_shape_manual(values = c(0, 2, 4, 3, 1,20))+
+        scale_y_continuous(breaks=seq(0.0, 1.0, 0.1))+
+        scale_color_brewer(palette="Set2")
+        #scale_x_continuous(breaks=seq(1, 30, 1))
+
+```
+
+
+For the same coverage bins let's estimate how much they differ from the "true coverage" values (sim_cov). This can be summarized by the standard deviation of the differences from the true coverage values. Furthermore, let's restrict this estimation to only those transcripts that were recovered by ALL aligners ((i.e. have >0 coverage in all sim_* columns)!
+
+```{r, fig.width=11,fig.height=6}
+brks <- c(0,1.5,2,4,6,8,10,15,20,30,40,50,75,200)
+mddf <- metdf %>% select(sim_cov, sim_t_strg, hisat21_t_strg, hisat2rs_t_strg, 
+                        hisat2_t_strg, hisat2nodta_t_strg, star_t_strg) %>% 
+  filter(sim_t_strg>0 & hisat21_t_strg>0 & hisat2rs_t_strg >0 & 
+                        hisat2_t_strg>0 & hisat2nodta_t_strg>0 & star_t_strg>0) %>%
+  mutate(bin_simcov=cut(sim_cov, breaks=brks)) %>% drop_na(bin_simcov) %>% group_by(bin_simcov) %>% 
+  summarize(tc=n(), mc=mean(sim_cov), v_T_strg = sd(sim_cov-sim_t_strg), 
+            v_hisat21=sd(sim_cov-hisat21_t_strg), v_hisat_rs=sd(sim_cov-hisat2rs_t_strg), 
+            v_hisat_dta=sd(sim_cov-hisat2_t_strg), v_hisat_nodta=sd(sim_cov-hisat2nodta_t_strg), 
+            v_star=sd(sim_cov-star_t_strg), .groups = 'drop') %>% 
+  pivot_longer(!bin_simcov & !tc & !mc, values_to="v", names_to="method") %>% 
+  mutate( method = gsub("_", "-",gsub("^v_","",method)))
+
+
+ggplot(data=mddf, aes(x=bin_simcov, y=v, group=method,
+        color=method)) +  geom_line(size=1) + geom_point(aes(shape=method), size=2.4) + 
+        xlab("Coverage bin") + ylab("deviation of difference from true coverage") + 
+        ggtitle("Deviation of differences from actual coverage") +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5),
+              axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
+              axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
+              ) +
+        scale_shape_manual(values = c(0, 2, 4, 3, 1,20))+ #scale_y_continuous(breaks=seq(0.0, 1.5, 0.1))+
+        scale_color_brewer(palette="Set2")
+        #scale_x_continuous(breaks=seq(1, 30, 1))
+
+```
