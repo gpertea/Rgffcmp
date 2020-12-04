@@ -1,5 +1,5 @@
 ---
-title: "Transcriptional noise simulations"
+title: "Transcriptional noise simulations - alignment accuracy"
 output: html_notebook
 ---
 
@@ -75,7 +75,7 @@ ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=num_match_spl/num_sim_spl, 
 Number of reads incorrectly mapped as spliced, even though they should be a single-exon alignment (false splice alignments)
 
 ```{r, fig.width=9,fig.height=5}
-ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=unspl_mapped_spl, group=aligner,
+ggplot(data=at, aes(x=as.numeric(factor(sample)), y=unspl_mapped_spl, group=aligner,
         color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
         xlab("samples") + ylab("single-exon reads incorrectly aligned as spliced") + 
         ggtitle("Single-exon reads incorrectly mapped as spliced") +
@@ -92,10 +92,10 @@ ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=unspl_mapped_spl, group=ali
 And similarly, the number of reads that should be aligned spliced but instead they were aligned without introns (missed spliced alignments!):
 
 ```{r, fig.width=9,fig.height=5}
-ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=spl_mapped_unspl, group=aligner,
+ggplot(data=at, aes(x=as.numeric(factor(sample)), y=spl_mapped_unspl, group=aligner,
         color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
-        xlab("samples") + ylab("single-exon reads incorrectly aligned as spliced") + 
-        ggtitle("Single-exon reads incorrectly mapped as spliced") +
+        xlab("samples") + ylab("multi-exon reads aligned without introns") + 
+        ggtitle("Multi-exon reads incorrectly mapped as spliced") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5),
               axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
