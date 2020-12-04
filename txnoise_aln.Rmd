@@ -62,7 +62,7 @@ When splicing noise is added, it looks pretty much the same:
 ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=num_match_spl/num_sim_spl, group=aligner,
         color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
         xlab("samples") + ylab(" proportion correctly aligned") + 
-        ggtitle("Proportion of spliced reads correctly aligned") +
+        ggtitle("Proportion of spliced reads correctly aligned (splicing noise added)") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5),
               axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
