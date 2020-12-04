@@ -1,0 +1,59 @@
+---
+title: "Transcriptional noise - gffcompare results"
+output: html_notebook
+---
+
+```{r}
+library(ggplot2)
+#library(plotly)
+library(dplyr)
+library(tidyr) #instead of reshape2, for gather() instead of melt()
+library(cowplot)
+
+
+# load the transcript coverage data with vario
+#t <- '2'
+cdf<-read.table('txnoise/t0_s0/gffcmp_summary.tab', 
+                  header=T, sep='\t')
+cdf$sample <- 't0_s0'
+names(cdf)[1] <- "aligner"
+names(cdf)[2] <- "qryfile"
+
+for (t in 0:2) { #use 0:2 to gather all tissues
+ for (s in 0:9) { #use 0:9 to gather all samples for this tissue
+   if (t!=0 || s!=0) {
+      ts=paste0('t',toString(t),'_s',toString(s))
+      df<-read.table(paste0('txnoise/',ts,'/gffcmp_summary.tab'), 
+                header=T, sep='\t')
+      df$sample <- ts
+      names(df)[1] <- "aligner"
+      names(df)[2] <- "qryfile"
+      cdf <- rbind(cdf, df)
+   }
+  }
+}
+
+cdf$aligner <- sub("^hisat2([a-z]+)", "hisat-\\1", cdf$aligner)
+cdf$aligner <- sub("^hisat2$", "hisat-dta", cdf$aligner)
+cdf$aligner <- sub("^sim$", "T-aln", cdf$aligner)
+
+scdf <- subset(cdf, qryfile=="test.strg")
+
+```
+
+```{r, fig.width=11,fig.height=6}
+ggplot(data=scdf, aes(x=as.numeric(factor(sample)), y=icSn, group=aligner,
+        color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
+        xlab("samples") + ylab("intron chain sensitivity") + 
+        ggtitle("Intron chain sensitivity (recall)") +
+        theme_minimal() +
+        theme(plot.title = element_text(hjust = 0.5),
+              axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
+              axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
+              ) +
+        scale_shape_manual(values = c(0, 2, 20, 8, 1, 3)) +
+        scale_x_continuous(breaks=seq(1, 30, 1)) +
+        scale_y_continuous(breaks=seq(47.0, 58.0, 0.5)) +
+        scale_color_brewer(palette="Spectral")
+```
+
