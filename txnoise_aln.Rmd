@@ -95,7 +95,7 @@ And similarly, the number of reads that should be aligned spliced but instead th
 ggplot(data=at, aes(x=as.numeric(factor(sample)), y=spl_mapped_unspl, group=aligner,
         color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
         xlab("samples") + ylab("multi-exon reads aligned without introns") + 
-        ggtitle("Multi-exon reads incorrectly mapped as spliced") +
+        ggtitle("Multi-exon reads incorrectly mapped as unspliced") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5),
               axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
