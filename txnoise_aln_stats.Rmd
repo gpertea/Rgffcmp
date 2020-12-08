@@ -3,10 +3,6 @@ title: "Transcriptional noise simulations - alignment accuracy"
 output: html_notebook
 ---
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
-
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
-
 
 ```{r, fig.width=20,fig.height=11}
 
@@ -14,28 +10,21 @@ library(ggplot2)
 library(dplyr)
 library(cowplot)
 
+#save(adf, file='txnoise_aln_stats.rda')
+#
 # load the aligner summary results
-#t <- '2'
-adf<-read.table('txnoise/results.head.tab', 
-                  header=T, sep='\t')
-for (t in 0:2) {
- for (s in 0:9) {
-   bdf<-read.table(paste0('txnoise/t',toString(t),'_s',toString(s),'/results.tab'), 
-                header=F, sep='\t')
-   bdf$V2 <- sub("^hisat2([a-z]+)", "hisat-\\1", bdf$V2)
-   bdf$V2 <- sub("^hisat2$", "hisat-dta", bdf$V2)
-   colnames(bdf) <- colnames(adf)
-   adf <- rbind(adf, bdf)
-  }
-}
-
 #noticed that hisat-nodta and hisat-rs give virtually identical results, so let us keep only hisat-nodta
-adf <- subset(adf, aligner != "hisat-rs")
+#adf <- subset(adf, aligner != "hisat-rs")
+
+
+load('txnoise_aln_stats.rda')
+
 
 ```
+The reads were simulated from CHESS transcripts found in 3 GTEx tissues, 10 samples each (30 samples total).
+Splicing noise was also added to the 30 samples (splice alignments were simulated from spurious multi-exon transcripts), which created another set of 30 samples.
 
-
-
+Spliting the data into the "regular" data set (at) and the one with splicing noise added (ats):
 ```{r}
 at <- subset(adf, grepl('_s\\d$', adf$sample)) 
 
@@ -80,7 +69,8 @@ ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=num_match_spl/num_sim_spl, 
         scale_y_continuous(breaks=seq(0.5, 0.98, 0.02)) +
         scale_x_continuous(breaks=seq(1, 30, 1))
 ```
-When adding the unspliced reads (not just the multi-exon ones) star is catching up, raising its recall fraction into the 90s:
+
+When considering all the reads - including the many single-exon, unspliced reads, STAR is catching up, raising its recall fraction into the 90s:
 
 ```{r, fig.width=11,fig.height=6}
 ggplot(data=at, aes(x=as.numeric(factor(sample)), y=num_match/num_sim, group=aligner,
@@ -92,44 +82,44 @@ ggplot(data=at, aes(x=as.numeric(factor(sample)), y=num_match/num_sim, group=ali
               axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
               axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
               ) +
-        scale_shape_manual(values = c(0, 2, 20, 18, 1)) +
-        scale_y_continuous(breaks=seq(0.5, 0.98, 0.02)) +
+        scale_shape_manual(values = c(0, 2, 20, 1)) +
+        scale_y_continuous(breaks=seq(0.5, 0.98, 0.01)) +
         scale_x_continuous(breaks=seq(1, 30, 1))
 ```
 
 All aligners reported some single-exon reads that were incorrectly mapped as spliced (false splice alignments).
 Graph below shows the proportion of these false spliced mappings from the total number of spliced-aligned reads for each aligner
-(so essentially this is a false discovery rate for junctions)
+Essentially this is a false discovery rate for spliced alignments (junctions), FP/(FP+TP)
 
 ```{r, fig.width=11,fig.height=6}
 ggplot(data=at, aes(x=as.numeric(factor(sample)), y=unspl_mapped_spl/num_aligned_spl, group=aligner,
         color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
-        xlab("samples") + ylab("single-exon reads incorrectly aligned as spliced") + 
-        ggtitle("Ratio of single-exon reads incorrectly mapped as spliced (FDR for spliced alignments)") +
+        xlab("samples") + ylab("splice alignments FDR") + 
+        ggtitle("False Discovery Rate of spliced alignments") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5),
               axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
               axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
               ) +
-        scale_shape_manual(values = c(0, 2, 20, 18, 1)) +
+        scale_shape_manual(values = c(0, 2, 20, 1)) +
         scale_x_continuous(breaks=seq(1, 30, 1)) #+
         #scale_y_continuous(breaks=seq(50000, 900000, 50000))
 
 ```
 
-Similarly, when splicing noise is added, the numbers are still very similar, just slightly higher, as expected:
+When splicing noise is added the numbers are slightly higher, as expected:
 
 ```{r, fig.width=11,fig.height=6}
 ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=unspl_mapped_spl/num_aligned_spl, group=aligner,
         color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
-        xlab("samples") + ylab("single-exon reads incorrectly aligned as spliced") + 
-        ggtitle("Ratio of single-exon reads incorrectly mapped as spliced (FDR for spliced alignments)") +
+        xlab("samples") + ylab("splice alignments FDR") + 
+        ggtitle("False Discovery Rate of spliced alignments (splicing noise added)") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5),
               axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
               axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
               ) +
-        scale_shape_manual(values = c(0, 2, 20, 18, 1)) +
+        scale_shape_manual(values = c(0, 2, 20, 1)) +
         scale_x_continuous(breaks=seq(1, 30, 1)) #+
         #scale_y_continuous(breaks=seq(50000, 900000, 50000))
 
