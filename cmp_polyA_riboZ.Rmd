@@ -1,0 +1,50 @@
+---
+title: "polyA_riboZ"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+
+```
+
+```{r}
+rspd <- read.table("~/work/ref/phenodata/rnaseq_samples_phenodata.tab", sep="\t",
+                   header = TRUE, stringsAsFactors = T)
+rspd$bamfile <- NULL
+rspd$sample_id <- NULL
+rspd$pmi <- as.numeric(rspd$pmi)
+rspd$rin <- as.numeric(rspd$rin)
+rspd$rnum <- as.character(rspd$rnum)
+rspd$p_id <- as.character(rspd$p_id)
+rspd$sample <- rspd$rnum
+wset <- which(rspd$protocol=="PolyA")
+rspd[wset, ]$sample <- paste0(rspd[wset, ]$rnum, '_polyA')
+```
+
+```{r}
+rspd$age_group <- cut(rspd$age, breaks = c(-10, 0.99, 9.99, 19.99, 39.99, 59.99, 150), labels=c('age0_1', 'age1_10', 'age10_20', 'age20_40', 'age40_60', 'age_60_'))
+
+```
+
+```{r}
+fd <- 'gffcmp410'
+vna <- readLines(file(paste(fd, 'polyA_205.gtf.lst', sep='/'), "r"))
+vna <- sapply(strsplit(vna, split='/'), '[', 4)
+vna <- sub('.gtf', '', vna)
+vnz <- readLines(file(paste(fd, 'riboZ_205.gtf.lst', sep='/'), "r"))
+vnz <- sapply(strsplit(vnz, split='/'), '[', 4)
+vnz <- sub('.gtf', '', vnz)
+```
+
+load the tracking files:
+```{r}
+
+tadf <- read.table(paste(fd, 'dlpfc_polyA.tracking', sep='/'), sep="\t",  stringsAsFactors = F, 
+                   header = F, col.names = c('tid', 'xloc', 'ref', 'class_code', vna))
+```
+
