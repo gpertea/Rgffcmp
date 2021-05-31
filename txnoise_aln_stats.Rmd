@@ -1,43 +1,37 @@
 ---
-title: "Transcriptional noise simulations - alignment accuracy"
+title: "RNA-Seq simulations - alignment accuracy"
 output: html_notebook
 ---
 
+30 RNA-Seq samples were simulated with polyester. The reads were simulated from CHESS transcripts found in 3 GTEx tissues, 10 samples each.
+These samples have intergenic and intronic "noise" transcripts added to the pool of "known" ("real") transcripts for the simulation.
+
+Additional splicing noise was then added to these 30 simulated samples and the resulting sets, after shuffling, were aligned separately as an additional set of 30 samples.
+
+* this R markdown notebook: [txnoise_aln_stats.Rmd](txnoise_aln_stats.Rmd)
+* this notebook data: [txnoise_aln_stats.rda](txnoise_aln_stats.rda)
 
 ```{r, fig.width=20,fig.height=11}
 
 library(ggplot2)
 library(dplyr)
-library(cowplot)
 
-#save(adf, file='txnoise_aln_stats.rda')
-#
-# load the aligner summary results
-#noticed that hisat-nodta and hisat-rs give virtually identical results, so let us keep only hisat-nodta
-#adf <- subset(adf, aligner != "hisat-rs")
-
-
-load('txnoise_aln_stats.rda')
-
+load('txnoise_aln_stats.rda') #loads the adf data frame object
 
 ```
-The reads were simulated from CHESS transcripts found in 3 GTEx tissues, 10 samples each (30 samples total).
-Splicing noise was also added to the 30 samples (splice alignments were simulated from spurious multi-exon transcripts), which created another set of 30 samples.
 
 Spliting the data into the "regular" data set (at) and the one with splicing noise added (ats):
 ```{r}
 at <- subset(adf, grepl('_s\\d$', adf$sample)) 
 
-## alignment data with splicing noise added:
+## alignment data when splicing noise was added:
 ats <- subset(adf, grepl('\\.s$', adf$sample))
 
 ```
 
 
-Percent of correct spliced alignments (multi-exon alignments)
-Instead of data=at, we can exclude aligner entries by using:
- data=subset(at, aligner %in% c('hisat2','star','hisat2nodta','hisat21'))
- 
+Percentage of correct spliced alignments (multi-exon alignments). 
+
 ```{r, fig.width=11,fig.height=6}
 ggplot(data=at, aes(x=as.numeric(factor(sample)), y=num_match_spl/num_sim_spl, group=aligner,
         color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
@@ -126,21 +120,20 @@ ggplot(data=ats, aes(x=as.numeric(factor(sample)), y=unspl_mapped_spl/num_aligne
 ```
 
 
-On the other side, the aligners also report a number of multi-exon reads that were mistakenly aligned without introns (missed spliced alignments!):
+On the other side, the aligners also report a number of multi-exon reads that were mistakenly aligned without introns
+(missed spliced alignments, FN). Plotting the False Omission rate (FOR = FN/(FN+TN)). FOR in this case is the proportion of
+these incorrectly unspliced alignments from the total number of unspliced alignments reported by each aligner
 
 ```{r, fig.width=11,fig.height=6}
-ggplot(data=at, aes(x=as.numeric(factor(sample)), y=spl_mapped_unspl, group=aligner,
+ggplot(data=at, aes(x=as.numeric(factor(sample)), y=spl_mapped_unspl/(num_aligned-num_aligned_spl), group=aligner,
         color=aligner)) +  geom_line(size=1) + geom_point(aes(shape=aligner), size=2.4) + 
-        xlab("samples") + ylab("multi-exon reads aligned without introns") + 
-        ggtitle("Multi-exon reads incorrectly mapped as unspliced") +
+        xlab("samples") + ylab("multi-exon reads FOR") + 
+        ggtitle("False omission rate of multi-exon reads incorrectly mapped as unspliced") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5),
               axis.title.x = element_text(color="#404040", size=12, face="bold", margin=(margin(t=8))),
               axis.title.y = element_text(color="#404040", size=12, face="bold", margin=(margin(r=8)))
               ) +
-        scale_shape_manual(values = c(0, 2, 20, 18, 1)) +
-        scale_x_continuous(breaks=seq(1, 30, 1)) +
-        scale_y_continuous(breaks=seq(250000, 6000000, 500000))
-        
-
+        scale_shape_manual(values = c(0, 2, 20, 1)) +
+        scale_x_continuous(breaks=seq(1, 30, 1)) 
 ```

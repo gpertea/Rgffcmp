@@ -1,7 +1,13 @@
 ---
-title: "Transcriptional noise simulations - transcript assembly"
+title: "RNA-Seq simulations - transcript assembly"
 output: html_notebook
 ---
+
+Transcript base coverage values were collected after StringTie assembly of each aligned output with various aligners. The object `metdf` only has the coverage values of multi-exon transcripts with simulated coverage greater than 0.5x
+
+* this R markdown notebook: [txnoise_asm_stats.Rmd](txnoise_asm_stats.Rmd)
+* this notebook data: [txnoise_asm_stats.rda](txnoise_asm_stats.rda)
+
 
 ```{r}
 library(ggplot2)
@@ -9,49 +15,23 @@ library(dplyr)
 library(tidyr) #instead of reshape2, for pivot_longer() instead of melt()
 library(RColorBrewer)
 
-# load the transcript coverage data with vario
-#t <- '2'
-adf<-read.table('txnoise/t0_s0/real.tinfo.covs.tab', 
-                  header=T, sep='\t')
-adf <- adf %>% select(-contains("_strg1")) %>% select(-contains("hisat2rs"))
-
-adf$tid <- paste('t0_s0', adf$tid, sep='.')
-
-#discard all the stringtie1 columns and all the hisat-rs columns
-
-for (t in 0:2) { #use 0:2 to gather all tissues
- for (s in 0:9) { #use 0:9 to gather all samples for this tissue
-   if (t!=0 || s!=0) {
-      ts=paste0('t',toString(t),'_s',toString(s))
-      df<-read.table(paste0('txnoise/',ts,'/real.tinfo.covs.tab'), 
-                header=T, sep='\t')
-      df <- df %>% select(-contains("_strg1")) %>% select(-contains("hisat2rs"))
-      df$tid <- paste(ts, df$tid, sep='.')
-      adf <- rbind(adf, df)
-   }
-  }
-}
-
-```
-Subset this dataset to only include the multi-exon transcripts with simulated base coverage > 0.5 
-```{r}
-metdf=subset(adf, num_exons>1 & sim_cov>0.5)
-#save(metdf, file="txnoise_asm_stats.rda")
-
+load("txnoise_asm_stats.rda") # loads the metdf object
 ```
 
-Now let's plot the transcript coverage recovery for various aligners, when assembled with stringtie 2 (%_strg), 
-including the assembly of the "simulated" perfect alignments (sim_t_strg)
+Assess the transcript coverage recovery for each aligner, including the assembly of the simulated (thus "perfect") alignments 
+(sim_t_strg column), shown as the "T-aln" aligner in the graphs below.
 
-We can start with the fraction of totally missed assemblies (coverage=0.00) as it decreases with the increase of sim_cov (recovery fractions)
+The X axis in the plots below represents discrete bins of simulated coverage. 
+
+The fraction of completely missed assemblies (coverage=0.00) decreases with the increase of sim_cov (transcript recovery rate per coverage bin).
 
 ```{r, fig.width=11,fig.height=6}
 brks <- c(0.5,1.5,2,4,6,8,10,15,20,30,40,50,75,100)
-tdf <- metdf %>% select(sim_cov, sim_t_strg, sim_t_strg1, hisat21_t_strg, hisat2rs_t_strg, 
+tdf <- metdf %>% select(sim_cov, sim_t_strg, hisat21_t_strg, 
                         hisat2_t_strg, hisat2nodta_t_strg, star_t_strg) %>% 
   mutate(bin_simcov=cut(metdf$sim_cov, breaks=c(brks, Inf))) %>% group_by(bin_simcov) %>% 
-  summarize(tc=n(), rf_T_strg1 = sum(sim_t_strg1>0)/tc, rf_T_strg2 = sum(sim_t_strg>0)/tc, 
-            rf_hisat21=sum(hisat21_t_strg>0)/tc, rf_hisat_rs=sum(hisat2rs_t_strg>0)/tc, 
+  summarize(tc=n(), rf_T_aln = sum(sim_t_strg>0)/tc, 
+            rf_hisat21=sum(hisat21_t_strg>0)/tc,
             rf_hisat_dta=sum(hisat2_t_strg>0)/tc, rf_hisat_nodta=sum(hisat2nodta_t_strg>0)/tc, 
             rf_star=sum(star_t_strg>0)/tc, .groups = 'drop') %>% 
   pivot_longer(!bin_simcov & !tc, values_to="rf", names_to="method") %>% 
@@ -59,7 +39,7 @@ tdf <- metdf %>% select(sim_cov, sim_t_strg, sim_t_strg1, hisat21_t_strg, hisat2
 
 ggplot(data=tdf, aes(x=bin_simcov, y=rf, group=method,
         color=method)) +  geom_line(size=1) + geom_point(aes(shape=method), size=2.4) + 
-        xlab("Coverage bin") + ylab("Transcript recovery rate") + 
+        xlab("Simulated coverage bin") + ylab("Transcript recovery rate") + 
         ggtitle("Transcript recovery rate by coverage") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5),
@@ -77,11 +57,11 @@ If we add the splicing noise:
 
 ```{r, fig.width=11,fig.height=6}
 brks <- c(0,1.5,2,4,6,8,10,15,20,30,40,50,75,100)
-twsdf <- metdf %>% select(sim_cov, sim_tws_strg, sim_tws_strg1, hisat21_tws_strg, hisat2rs_tws_strg, 
+twsdf <- metdf %>% select(sim_cov, sim_tws_strg, hisat21_tws_strg, 
                         hisat2_tws_strg, hisat2nodta_tws_strg, star_tws_strg) %>% 
   mutate(bin_simcov=cut(metdf$sim_cov, breaks=c(brks, Inf))) %>% group_by(bin_simcov) %>% 
-  summarize(tc=n(), rf_T_strg1 = sum(sim_tws_strg1>0)/tc, rf_T_strg2 = sum(sim_tws_strg>0)/tc, 
-            rf_hisat21=sum(hisat21_tws_strg>0)/tc, rf_hisat_rs=sum(hisat2rs_tws_strg>0)/tc, 
+  summarize(tc=n(), rf_T_aln = sum(sim_tws_strg>0)/tc, 
+            rf_hisat21=sum(hisat21_tws_strg>0)/tc, 
             rf_hisat_dta=sum(hisat2_tws_strg>0)/tc, rf_hisat_nodta=sum(hisat2nodta_tws_strg>0)/tc, 
             rf_star=sum(star_tws_strg>0)/tc, .groups = 'drop') %>% 
   pivot_longer(!bin_simcov & !tc, values_to="rf", names_to="method") %>% 
@@ -90,7 +70,7 @@ twsdf <- metdf %>% select(sim_cov, sim_tws_strg, sim_tws_strg1, hisat21_tws_strg
 
 ggplot(data=twsdf, aes(x=bin_simcov, y=rf, group=method,
         color=method)) +  geom_line(size=1) + geom_point(aes(shape=method), size=2.4) + 
-        xlab("Coverage bin") + ylab("Transcript recovery rate") + 
+        xlab("Simulated coverage bin") + ylab("Transcript recovery rate") + 
         ggtitle("Transcript recovery rate by coverage (splicing noise added)") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5),
@@ -106,11 +86,11 @@ It's clear that Stringtie1 is always worse than Stringtie2, so we'll drop it fro
 
 ```{r, fig.width=11,fig.height=6}
 brks <- c(0,1.5,2,4,6,8,10,15,20,30,40,50,75,100)
-tdf <- metdf %>% select(sim_cov, sim_t_strg, hisat21_t_strg, hisat2rs_t_strg, 
+tdf <- metdf %>% select(sim_cov, sim_t_strg, hisat21_t_strg, 
                         hisat2_t_strg, hisat2nodta_t_strg, star_t_strg) %>% 
   mutate(bin_simcov=cut(metdf$sim_cov, breaks=c(brks, Inf))) %>% group_by(bin_simcov) %>% 
-  summarize(tc=n(), rf_T_strg = sum(sim_t_strg>0)/tc, 
-            rf_hisat21=sum(hisat21_t_strg>0)/tc, rf_hisat_rs=sum(hisat2rs_t_strg>0)/tc, 
+  summarize(tc=n(), rf_T_aln = sum(sim_t_strg>0)/tc, 
+            rf_hisat21=sum(hisat21_t_strg>0)/tc,
             rf_hisat_dta=sum(hisat2_t_strg>0)/tc, rf_hisat_nodta=sum(hisat2nodta_t_strg>0)/tc, 
             rf_star=sum(star_t_strg>0)/tc, .groups = 'drop') %>% 
   pivot_longer(!bin_simcov & !tc, values_to="rf", names_to="method") %>% 
@@ -119,7 +99,7 @@ tdf <- metdf %>% select(sim_cov, sim_t_strg, hisat21_t_strg, hisat2rs_t_strg,
 
 ggplot(data=tdf, aes(x=bin_simcov, y=rf, group=method,
         color=method)) +  geom_line(size=1) + geom_point(aes(shape=method), size=2.4) + 
-        xlab("Coverage bin") + ylab("Transcript recovery rate") + 
+        xlab("Simulated coverage bin") + ylab("Transcript recovery rate") + 
         ggtitle("Transcript recovery rate by coverage") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5),
@@ -134,17 +114,29 @@ ggplot(data=tdf, aes(x=bin_simcov, y=rf, group=method,
 ```
 
 
-For the same coverage bins let's estimate how much they differ from the "true coverage" values (sim_cov). This can be summarized by the standard deviation of the differences from the true coverage values. Furthermore, let's restrict this estimation to only those transcripts that were recovered by ALL aligners ((i.e. have >0 coverage in all sim_* columns)!
+For the same coverage bins let's estimate how much they differ from the "true coverage" values (sim_cov). This can be summarized by the standard deviation of the differences from the true coverage values. 
+
+A normalization of the stringtie coverage results is performed first (I am using normalize.quantiles from preprocessCore).
+
 
 ```{r, fig.width=11,fig.height=6}
+
+library(preprocessCore)
+
 brks <- c(0,1.5,2,4,6,8,10,15,20,30,40,50,75,200)
-mddf <- metdf %>% select(sim_cov, sim_t_strg, hisat21_t_strg, hisat2rs_t_strg, 
-                        hisat2_t_strg, hisat2nodta_t_strg, star_t_strg) %>% 
-  filter(sim_t_strg>0 & hisat21_t_strg>0 & hisat2rs_t_strg >0 & 
-                        hisat2_t_strg>0 & hisat2nodta_t_strg>0 & star_t_strg>0) %>%
+
+mxdf <- metdf %>% select(sim_cov, sim_t_strg, hisat21_t_strg, 
+                        hisat2_t_strg, hisat2nodta_t_strg, star_t_strg)# %>% 
+        #filter(sim_t_strg>0 & hisat21_t_strg>0 &  
+        #                hisat2_t_strg>0 & hisat2nodta_t_strg>0 & star_t_strg>0)
+mx <- normalize.quantiles(as.matrix (mxdf %>% select(-sim_cov)))
+
+mxdf[c('sim_t_strg', 'hisat21_t_strg', 'hisat2_t_strg', 'hisat2nodta_t_strg', 'star_t_strg')] <- mx
+
+mddf <- mxdf %>%
   mutate(bin_simcov=cut(sim_cov, breaks=brks)) %>% drop_na(bin_simcov) %>% group_by(bin_simcov) %>% 
-  summarize(tc=n(), mc=mean(sim_cov), v_T_strg = sd(sim_cov-sim_t_strg), 
-            v_hisat21=sd(sim_cov-hisat21_t_strg), v_hisat_rs=sd(sim_cov-hisat2rs_t_strg), 
+  summarize(tc=n(), mc=mean(sim_cov), v_T_aln = sd(sim_cov-sim_t_strg), 
+            v_hisat21=sd(sim_cov-hisat21_t_strg),
             v_hisat_dta=sd(sim_cov-hisat2_t_strg), v_hisat_nodta=sd(sim_cov-hisat2nodta_t_strg), 
             v_star=sd(sim_cov-star_t_strg), .groups = 'drop') %>% 
   pivot_longer(!bin_simcov & !tc & !mc, values_to="v", names_to="method") %>% 
@@ -153,7 +145,7 @@ mddf <- metdf %>% select(sim_cov, sim_t_strg, hisat21_t_strg, hisat2rs_t_strg,
 
 ggplot(data=mddf, aes(x=bin_simcov, y=v, group=method,
         color=method)) +  geom_line(size=1) + geom_point(aes(shape=method), size=2.4) + 
-        xlab("Coverage bin") + ylab("deviation of difference from true coverage") + 
+        xlab("Simulated coverage bin") + ylab("deviation of difference from true coverage (after normalization)") + 
         ggtitle("Deviation of differences from actual coverage") +
         theme_minimal() +
         theme(plot.title = element_text(hjust = 0.5),
@@ -165,3 +157,4 @@ ggplot(data=mddf, aes(x=bin_simcov, y=v, group=method,
         #scale_x_continuous(breaks=seq(1, 30, 1))
 
 ```
+There is something odd happening in this graph, with STAR assembly results having a spike of bad variance in the 4x-6x coverage bin but then getting almost perfect coverage for the 8-10, 10-15 and 15-20 coverage bins.

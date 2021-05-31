@@ -37,7 +37,9 @@ cdf$aligner <- sub("^hisat2([a-z]+)", "hisat-\\1", cdf$aligner)
 cdf$aligner <- sub("^hisat2$", "hisat-dta", cdf$aligner)
 cdf$aligner <- sub("^sim$", "T-aln", cdf$aligner)
 
-scdf <- subset(cdf, qryfile=="test.strg")
+cmpdf <- subset(cdf, aligner!="hisat-rs" & endsWith(qryfile, ".strg"))
+
+save(cmpdf, file="txnoise_gffcmp_stats.rda")
 
 ```
 

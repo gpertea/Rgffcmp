@@ -1,0 +1,137 @@
+---
+title: "gffcmp_class_codes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(tidyverse) #for pivot_longer
+
+#atbl <- read.table("data/gffcmp.annotated.cjtable", sep="\t", header = T)
+dfa <- read.table("data/dlpfc_polyA.combined.sjtab", sep="\t", header = T)
+dfr <- read.table("data/dlpfc_riboZ.combined.sjtab", sep="\t", header = T)
+gdf <- read.table("data/gencode32_gdata.tab", sep="\t", header = F)
+colnames(gdf) <- c('tid', 'gid', 'gtype', 'gname', 'ttype')
+reClass <- function(df) {
+ df$class=ifelse(df$class_code=='m' | df$class_code=='n', 'retain_intr', df$class_code)
+ df$class=ifelse(df$class=='=' | df$class=='c', 'match', df$class) # either totally or partially
+ df$class=ifelse(df$class=='s' | df$class=='x', 'antisense', df$class)
+ df$class=ifelse(df$class %in% c('u','p','.'), 'intergenic', df$class)
+ df$class=ifelse(df$class=='j', 'junction_match', df$class)
+ df$class=ifelse(df$class=='i', 'intronic', df$class)
+ df$class=ifelse(df$class=='k', 'contain_ref', df$class) #and matching their structure
+ df$class=ifelse(df$class=='y', 'intronic_ref', df$class) #within 
+ df$class=ifelse(df$class=='e' | df$class=='o', 'other', df$class)
+ df$class=factor(df$class, levels=c('match', 'junction_match','contain_ref', 'retain_intr',
+                                    'intronic','intronic_ref','antisense','intergenic','other') )
+ return(df)
+}
+message("Raw polyA transfrags: ", nrow(dfa))
+message("Raw ribo transfrags:  ", nrow(dfr))
+dfa <- reClass(dfa)
+dfr <- reClass(dfr)
+
+acf <- as.data.frame(table(dfa$class)) #tx class frequency
+colnames(acf) <-c('class','freq_polya')
+rcf <- as.data.frame(table(dfr$class)) #tx class frequency
+colnames(rcf) <-c('class','freq_ribo')
+acf$freq_ribo <- rcf[match(acf$class, rcf$class), ]$freq_ribo
+message("total polyA class:", sum(acf$freq_polya))
+message("total  ribo class:", sum(acf$freq_ribo))
+raw_cf <- acf
+```
+
+```{r}
+# Now discard transfrags that were not expressed identically in at least 5 samples
+dfaf <- subset(dfa, num_samples>=5 | class_code=='=')
+dfrf <- subset(dfr, num_samples>=5 | class_code=='=')
+message("polyA transfrags with structure preserved >=5 samples or matching reference: ", nrow(dfaf))
+message("Ribo transfrags with structure preserved >=5 samples or matching reference:  ", nrow(dfrf))
+
+dfaf <- reClass(dfaf)
+dfrf <- reClass(dfrf)
+acf <- as.data.frame(table(dfaf$class)) #tx class frequency
+colnames(acf) <-c('class','freq_polya')
+rcf <- as.data.frame(table(dfrf$class)) #tx class frequency
+colnames(rcf) <-c('class','freq_ribo')
+acf$freq_ribo <- rcf[match(acf$class, rcf$class), ]$freq_ribo
+message("filtered total polyA class:", sum(acf$freq_polya))
+message("filtered total  ribo class:", sum(acf$freq_ribo))
+fcf <- acf
+
+```
+
+```{r, fig.width=8,fig.height=6}
+
+rplot <- raw_cf %>% 
+  pivot_longer(-class, names_to = "protocol", values_to="frequency") %>% 
+  mutate(protocol=sub("ya", 'yA', gsub("freq_","",protocol))) %>%
+  ggplot(aes(x = class, y = frequency, fill = protocol)) + 
+  geom_bar(stat = "identity", position = "dodge", width = 0.8) +
+  theme( axis.text.y = element_blank(), axis.title.y = element_blank(),
+         legend.position = "none" ) + scale_y_reverse() +
+  scale_x_discrete(position = "top") + labs(x="tx classes") + coord_flip()
+#  
+fplot <- fcf %>% 
+  pivot_longer(-class, names_to = "protocol", values_to="frequency") %>% 
+  mutate(protocol=sub("ya", 'yA', gsub("freq_","",protocol))) %>%
+  ggplot(aes(x = class, y = frequency, fill = protocol)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.8) + scale_y_discrete(limits = rev) +
+  theme( axis.title.y = element_blank(), axis.text.y = element_text(hjust=0.5), panel.margin.x = NULL ) +
+  coord_flip()
+
+
+plot_grid(rplot, fplot, ncol=2)
+```
+```{r}
+library(cowplot)
+```
+
+```{r,fig.width=9,fig.height=5}
+ rplot <- raw_cf %>% 
+   pivot_longer(-class, names_to = "protocol", values_to="frequency") %>% 
+   mutate(protocol=sub("ya", 'yA', gsub("freq_","",protocol))) %>%
+   ggplot(aes(x = class, y = frequency, fill = protocol) ) + 
+   geom_bar(stat = "identity", position = "dodge", width = 0.8) + 
+   theme( axis.text.y = element_blank(), axis.title.y = element_blank(),
+          legend.position = "none" ) + scale_y_reverse(sec.axis = sec_axis(~.*1)) +
+   scale_x_discrete(position = "top", limits = rev)  + 
+   labs(x="tx classes")+ coord_flip()
+ #  
+ fplot <- fcf %>% 
+   pivot_longer(-class, names_to = "protocol", values_to="frequency") %>% 
+   mutate(protocol=sub("ya", 'yA', gsub("freq_","",protocol))) %>%
+   ggplot(aes(x = class, y = frequency, fill = protocol)) + 
+   geom_bar(stat = "identity", position = "dodge", width = 0.8) + 
+   theme( axis.title.y = element_blank(), axis.text.y = element_text(hjust=0.5), 
+          panel.margin.x = NULL ) + scale_y_continuous(sec.axis = sec_axis(~.*1)) +
+   scale_x_discrete(limits = rev) +
+   coord_flip()
+ 
+ 
+ plot_grid(rplot, fplot, ncol=2)
+```
+
+Get more stats in the filtered dataset
+```{r}
+#multi-exonic transfrags:
+nrow(subset(dfrf, novel_juncs!='.'))
+nrow(subset(dfaf, novel_juncs!='.'))
+
+#assign gene type
+dfac$gtype <- gdf[match(dfac$gene_name, gdf$gname), ]$gtype
+dfrc$gtype <- gdf[match(dfrc$gene_name, gdf$gname), ]$gtype
+agf <- as.data.frame(table(dfac$gtype)) #gene type frequency
+colnames(agf) <-c('gtype','freq_polya')
+rgf <- as.data.frame(table(dfrc$gtype)) #gene type frequency
+colnames(rgf) <-c('gtype','freq_ribo')
+agf$freq_ribo <- rgf[match(agf$gtype, rgf$gtype), ]$freq_ribo
+```
+
